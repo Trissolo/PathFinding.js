@@ -118,7 +118,7 @@ Grid.prototype.getNeighbors = function(node, diagonalMovement) {
     }
     // →
     if (this.isWalkableAt(x + 1, y)) {
-        neighbors.push(nodes[y][(x + 1) + y * this.width]);
+        neighbors.push(nodes[(x + 1) + y * this.width]);
         s1 = true;
     }
     // ↓
