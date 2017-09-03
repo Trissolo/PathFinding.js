@@ -9,31 +9,10 @@ var DiagonalMovement = require('./DiagonalMovement');
  * @param {Array<Array<(number|boolean)>>} [matrix] - A 0-1 matrix
  *     representing the walkable status of the nodes(0 or false for walkable).
  *     If the matrix is not supplied, all the nodes will be walkable.  */
-function Grid(width_or_matrix, height, matrix) {
-    var width;
-
-    if (typeof width_or_matrix !== 'object') {
-        width = width_or_matrix;
-    } else {
-        height = width_or_matrix.length;
-        width = width_or_matrix[0].length;
-        matrix = width_or_matrix;
-    }
-
-    /**
-     * The number of columns of the grid.
-     * @type number
-     */
+function Grid(width, height, matrix) {
     this.width = width;
-    /**
-     * The number of rows of the grid.
-     * @type number
-     */
     this.height = height;
-
-    /**
-     * A 2D array of nodes.
-     */
+    matrix = matrix || new Array(width * height);
     this.nodes = this._buildNodes(width, height, matrix);
 }
 
@@ -47,41 +26,22 @@ function Grid(width_or_matrix, height, matrix) {
  * @see Grid
  */
 Grid.prototype._buildNodes = function(width, height, matrix) {
-    var i, j,
+    var i, j, pos, nodes = [];
         nodes = new Array(height);
 
     for (i = 0; i < height; ++i) {
-        nodes[i] = new Array(width);
-        for (j = 0; j < width; ++j) {
-            nodes[i][j] = new Node(j, i);
-        }
-    }
-
-
-    if (matrix === undefined) {
-        return nodes;
-    }
-
-    if (matrix.length !== height || matrix[0].length !== width) {
-        throw new Error('Matrix size does not fit');
-    }
-
-    for (i = 0; i < height; ++i) {
-        for (j = 0; j < width; ++j) {
-            if (matrix[i][j]) {
-                // 0, false, null will be walkable
-                // while others will be un-walkable
-                nodes[i][j].walkable = false;
-            }
-        }
-    }
+      for (j = 0; j < width; ++j) {
+        pos = j + i * width;
+          nodes[pos] = new Node(j, i, matrix[pos] ? false : true);
+      }
+    }    
 
     return nodes;
 };
 
 
 Grid.prototype.getNodeAt = function(x, y) {
-    return this.nodes[y][x];
+    return this.nodes[x + y * this.width];
 };
 
 
@@ -93,7 +53,7 @@ Grid.prototype.getNodeAt = function(x, y) {
  * @return {boolean} - The walkability of the node.
  */
 Grid.prototype.isWalkableAt = function(x, y) {
-    return this.isInside(x, y) && this.nodes[y][x].walkable;
+    return this.isInside(x, y) && this.nodes[x + y * this.width].walkable;
 };
 
 
@@ -119,7 +79,7 @@ Grid.prototype.isInside = function(x, y) {
  * @param {boolean} walkable - Whether the position is walkable.
  */
 Grid.prototype.setWalkableAt = function(x, y, walkable) {
-    this.nodes[y][x].walkable = walkable;
+    this.nodes[x + y * this.width].walkable = walkable;
 };
 
 
@@ -153,22 +113,22 @@ Grid.prototype.getNeighbors = function(node, diagonalMovement) {
 
     // ↑
     if (this.isWalkableAt(x, y - 1)) {
-        neighbors.push(nodes[y - 1][x]);
+        neighbors.push(nodes[x + (y - 1) * this.width]);
         s0 = true;
     }
     // →
     if (this.isWalkableAt(x + 1, y)) {
-        neighbors.push(nodes[y][x + 1]);
+        neighbors.push(nodes[y][(x + 1) + y * this.width]);
         s1 = true;
     }
     // ↓
     if (this.isWalkableAt(x, y + 1)) {
-        neighbors.push(nodes[y + 1][x]);
+        neighbors.push(nodes[x + (y + 1) * this.width]);
         s2 = true;
     }
     // ←
     if (this.isWalkableAt(x - 1, y)) {
-        neighbors.push(nodes[y][x - 1]);
+        neighbors.push(nodes[(x - 1) + y * this.width]);
         s3 = true;
     }
 
@@ -197,19 +157,19 @@ Grid.prototype.getNeighbors = function(node, diagonalMovement) {
 
     // ↖
     if (d0 && this.isWalkableAt(x - 1, y - 1)) {
-        neighbors.push(nodes[y - 1][x - 1]);
+        neighbors.push(nodes[(x - 1) + (y - 1) * this.width]);
     }
     // ↗
     if (d1 && this.isWalkableAt(x + 1, y - 1)) {
-        neighbors.push(nodes[y - 1][x + 1]);
+        neighbors.push(nodes[(x + 1) + (y - 1) * this.width]);
     }
     // ↘
     if (d2 && this.isWalkableAt(x + 1, y + 1)) {
-        neighbors.push(nodes[y + 1][x + 1]);
+        neighbors.push(nodes[(x + 1) + (y + 1) * this.width]);
     }
     // ↙
     if (d3 && this.isWalkableAt(x - 1, y + 1)) {
-        neighbors.push(nodes[y + 1][x - 1]);
+        neighbors.push(nodes[(x - 1) + (y + 1) * this.width]);
     }
 
     return neighbors;
@@ -221,24 +181,12 @@ Grid.prototype.getNeighbors = function(node, diagonalMovement) {
  * @return {Grid} Cloned grid.
  */
 Grid.prototype.clone = function() {
-    var i, j,
+    var i, j, nodes = this.nodes, len = this.nodes.length,  
+        newGrid = new Grid(this.width, this.height, this.nodes.slice());
 
-        width = this.width,
-        height = this.height,
-        thisNodes = this.nodes,
-
-        newGrid = new Grid(width, height),
-        newNodes = new Array(height);
-
-    for (i = 0; i < height; ++i) {
-        newNodes[i] = new Array(width);
-        for (j = 0; j < width; ++j) {
-            newNodes[i][j] = new Node(j, i, thisNodes[i][j].walkable);
-        }
+    for (i = 0; i < len; i++) {
+        newGrid.nodes[i].walkable = nodes[i].walkable;
     }
-
-    newGrid.nodes = newNodes;
-
     return newGrid;
 };
 
